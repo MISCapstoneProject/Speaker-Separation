@@ -22,7 +22,7 @@ model = seperator.from_hparams(
 )
 
 # 讀取檔案路徑
-est_sources = model.separate_file(path='mixed_voice_noise.wav')
+est_sources = model.separate_file(path = "Audios/mixed_voice.wav")
 # print(f"分離後音頻形狀: {est_sources.shape}")
 
 print(f"分離後音頻形狀: {est_sources.shape}")
@@ -38,7 +38,7 @@ print(f"分離後數據範圍: {est_sources.min().item()}, {est_sources.max().it
 # print(f"Speaker 2 形狀: {speaker2.shape}")
 
 # 分離語者
-torchaudio.save("separate_voice/speaker1_noise.wav", est_sources[:, :, 0].detach().cpu(), 8000)
-torchaudio.save("separate_voice/speaker2_noise.wav", est_sources[:, :, 1].detach().cpu(), 8000)
+torchaudio.save("separate_voice/speaker1.wav", est_sources[:, :, 0].detach().cpu(), 8000)
+torchaudio.save("separate_voice/speaker2.wav", est_sources[:, :, 1].detach().cpu(), 8000)
 
 print("語者分離完成，已儲存 speaker1.wav 和 speaker2.wav")

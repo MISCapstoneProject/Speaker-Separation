@@ -8,6 +8,7 @@ from datetime import datetime
 即如果超過3秒沒有偵測到聲音訊號
 就會停止錄音並輸出，再重新錄製新音訊
 如果沒有超過3秒無聲訊, 就會錄滿10秒後輸出
+將結果儲存至outputFile_VAD中
 """
 
 CHUNK = 1024             # 每次從輸入串流讀取的 frame 數量

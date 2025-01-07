@@ -1,28 +1,30 @@
 import os
 import pyaudio
-import wave
 import numpy as np
 import threading
 from datetime import datetime
 from speechbrain.inference import SepformerSeparation as separator
+import torch
 import torchaudio
 
 """
+
 record_separate_sync.py
+在根目錄下執行: python Record/record_separate_sync.py
 邊錄音邊分段，並即時進行語者分離
 
 錄音與分段儲存：
+每次錄音 RECORD_SECONDS 秒（預設 5 秒）
+將錄音的音訊 frame 作為輸入，傳遞給語者分離模型進行處理
 
-每次錄音 RECORD_SECONDS 秒（預設 5 秒），儲存為獨立的 .wav 檔案。
-檔案名稱包含時間戳，確保不會覆蓋。
 語者分離（多執行緒）：
-
-每儲存一個音檔後，啟動一個執行緒進行語者分離。
+輸入音訊 frame 
 語者分離的結果以 speaker1_...wav 和 speaker2_...wav 的格式儲存。
-並行處理：
 
+並行處理：
 錄音與語者分離在不同的執行緒中運行，確保錄音不會因語者分離的耗時而中斷。
 若錄音速度過快（例如每秒生成檔案），可以考慮使用工作佇列(如 queue.Queue) 或非同步處理進行調度
+
 """
 
 # 錄音參數
@@ -39,9 +41,9 @@ model = separator.from_hparams(
     savedir="pretrained_models/sepformer-wsj02mix"
 )
 
-def record_audio_and_save(output_dir):
+def record_audio_and_separate(output_dir):
     """
-    錄音並將每段儲存為獨立檔案
+    錄音並以 frame 為單位同步進行語者分離，最後儲存每位語者的獨立音檔
     """
     p = pyaudio.PyAudio()
     stream = p.open(
@@ -60,22 +62,15 @@ def record_audio_and_save(output_dir):
             frames = []
             for _ in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
                 data = stream.read(CHUNK)
-                frames.append(data)
+                frames.append(np.frombuffer(data, dtype=np.int16))
 
-            # 儲存錄音檔
-            timestamp_str = datetime.now().strftime('%Y%m%d-%H_%M_%S')
-            raw_filename = os.path.join('Audios/rawAudioFile', f"raw_audio_{timestamp_str}_{segment_index}.wav")
-            wf = wave.open(raw_filename, 'wb')
-            wf.setnchannels(CHANNELS)
-            wf.setsampwidth(p.get_sample_size(FORMAT))
-            wf.setframerate(RATE)
-            wf.writeframes(b''.join(frames))
-            wf.close()
+            # 將音訊 frames 合併為 numpy array
+            audio_data = np.concatenate(frames)
+            audio_tensor = torch.tensor(audio_data, dtype=torch.float32).unsqueeze(0)
 
-            print(f"錄音檔已儲存：{raw_filename}")
-
-            # 啟動語者分離的執行緒
-            threading.Thread(target=separate_speakers, args=(raw_filename, output_dir)).start()
+            # 語者分離
+            print(f"開始語者分離：段落 {segment_index}")
+            threading.Thread(target=process_and_save, args=(audio_tensor, output_dir, segment_index)).start()
             segment_index += 1
 
     except KeyboardInterrupt:
@@ -84,19 +79,20 @@ def record_audio_and_save(output_dir):
         stream.close()
         p.terminate()
 
-def separate_speakers(input_file, output_dir):
+def process_and_save(audio_tensor, output_dir, segment_index):
     """
-    對錄製的音檔進行語者分離
+    處理語者分離並儲存結果
     """
     try:
-        print(f"開始語者分離：{input_file}")
-        est_sources = model.separate_file(path=input_file)
+        est_sources = model.separate_batch(audio_tensor, sample_rate=RATE)
 
         # 儲存分離結果
-        speaker1_file = os.path.join(output_dir, f"speaker1_{os.path.basename(input_file)}")
-        speaker2_file = os.path.join(output_dir, f"speaker2_{os.path.basename(input_file)}")
-        torchaudio.save(speaker1_file, est_sources[:, :, 0].detach().cpu(), 8000)
-        torchaudio.save(speaker2_file, est_sources[:, :, 1].detach().cpu(), 8000)
+        timestamp_str = datetime.now().strftime('%Y%m%d-%H_%M_%S')
+        speaker1_file = os.path.join(output_dir, f"speaker1_{timestamp_str}_{segment_index}.wav")
+        speaker2_file = os.path.join(output_dir, f"speaker2_{timestamp_str}_{segment_index}.wav")
+
+        torchaudio.save(speaker1_file, est_sources[:, :, 0].detach().cpu(), RATE)
+        torchaudio.save(speaker2_file, est_sources[:, :, 1].detach().cpu(), RATE)
 
         print(f"語者分離完成，結果已儲存：{speaker1_file}, {speaker2_file}")
     except Exception as e:
@@ -106,7 +102,7 @@ def main():
     output_dir = "Audios/output_separatedAudio"
     os.makedirs(output_dir, exist_ok=True)
 
-    record_audio_and_save(output_dir)
+    record_audio_and_separate(output_dir)
 
 if __name__ == "__main__":
     main()

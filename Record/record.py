@@ -1,9 +1,11 @@
 import pyaudio
 import wave
 from datetime import datetime
+import os
 
 """
-基礎錄音程式, 每隔5秒切割一次音檔
+在根目錄下執行: python Record/record.py
+基礎錄音程式, 每隔5秒切割一次音檔 (儲存至outputFile)
 按下CTRL+C 停止錄音
 """
 
@@ -63,7 +65,7 @@ def main():
             # 2) 將剛錄製好的音訊存檔 (wav)
             # 取得當前時間，格式化為 yyyyMMdd-HH:mm:ss
             timestamp_str = datetime.now().strftime('%Y%m%d-%H_%M_%S')
-            filename = f"Audios/outputFile/audio_{timestamp_str}-{segment_index}.wav"
+            filename = os.path.join("Audios", "outputFile", f"audio_{timestamp_str}-{segment_index}.wav")
             save_wav_file(filename, frames, p)
 
             print(f"第 {segment_index} 段錄音已儲存：{filename}")
