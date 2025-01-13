@@ -6,6 +6,7 @@ from datetime import datetime
 from speechbrain.inference import SepformerSeparation as separator
 import torch
 import torchaudio
+from concurrent.futures import ThreadPoolExecutor
 
 """
 record_separated_sync_ds.py
@@ -50,6 +51,7 @@ model = separator.from_hparams(
 
 # 用於存儲語者分離執行緒
 threads = []
+executor = ThreadPoolExecutor(max_workers=MAX_THREADS)
 
 def calibrate_silence_threshold(audio_stream, calibration_duration=2):
     """
@@ -111,9 +113,8 @@ def dynamic_cut_and_stop(output_dir, silence_threshold, max_silence_duration=5):
                 audio_tensor = torch.tensor(audio_data, dtype=torch.float32).unsqueeze(0)
 
                 # 語者分離處理
-                t = threading.Thread(target=process_and_save, args=(audio_tensor, output_dir, segment_index))
-                threads.append(t)
-                t.start()
+                # 提交語者分離任務到執行緒池
+                executor.submit(process_and_save, audio_tensor, output_dir, segment_index)
 
                 # 清空 frames，準備下一段錄音
                 frames = []
@@ -121,9 +122,9 @@ def dynamic_cut_and_stop(output_dir, silence_threshold, max_silence_duration=5):
                 active_duration = 0  # 重置有效音訊累積時間
 
             # 如果無語音時間超過限制，停止錄音
-            if silent_duration >= max_silence_duration:
-                print(f"超過 {max_silence_duration} 秒無語音，錄音自動結束。")
-                break
+            # if silent_duration >= max_silence_duration:
+            #     print(f"超過 {max_silence_duration} 秒無語音，錄音自動結束。")
+            #     break
 
     except KeyboardInterrupt:
         print("\n錄音停止。")
@@ -134,8 +135,7 @@ def dynamic_cut_and_stop(output_dir, silence_threshold, max_silence_duration=5):
 
         # 等待所有語者分離執行緒完成
         print("等待語者分離執行緒完成...")
-        for t in threads:
-            t.join()
+        executor.shutdown(wait=True)
         print("所有語者分離執行緒完成。程式結束。")
 
 def process_and_save(audio_tensor, output_dir, segment_index):

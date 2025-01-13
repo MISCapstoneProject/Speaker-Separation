@@ -2,7 +2,11 @@
     "cSpell.words": [
         "frombuffer",
         "hparams",
+        "keepdim",
+        "levelname",
         "pyaudio",
+        "randn",
+        "resampler",
         "savedir",
         "seperator",
         "Sepformer"

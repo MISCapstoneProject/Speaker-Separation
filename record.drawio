@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" version="25.0.3">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" version="26.0.4">
   <diagram name="第 1 页" id="mbmaIwCZK5cXzv-pkxVY">
     <mxGraphModel dx="989" dy="514" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -7,7 +7,7 @@
         <mxCell id="Co1p_BzvC4izIlK4ZqVG-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Co1p_BzvC4izIlK4ZqVG-1" target="Co1p_BzvC4izIlK4ZqVG-2" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="Co1p_BzvC4izIlK4ZqVG-1" value="原始音訊&lt;div&gt;(每10秒輸出一個)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+        <mxCell id="Co1p_BzvC4izIlK4ZqVG-1" value="原始音訊&lt;div&gt;(每5秒輸出一個)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="80" y="150" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="Co1p_BzvC4izIlK4ZqVG-5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="Co1p_BzvC4izIlK4ZqVG-2" target="Co1p_BzvC4izIlK4ZqVG-4" edge="1">
@@ -25,26 +25,44 @@
         <mxCell id="Co1p_BzvC4izIlK4ZqVG-7" value="將分離後的音檔&lt;div&gt;存儲在另一個區域&lt;/div&gt;&lt;div&gt;以便後續的語音辨識&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
           <mxGeometry x="405" y="180" width="130" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="imE-p2sqSigTD8bL96RM-2" target="imE-p2sqSigTD8bL96RM-4">
+        <mxCell id="imE-p2sqSigTD8bL96RM-1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="imE-p2sqSigTD8bL96RM-2" target="imE-p2sqSigTD8bL96RM-4" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-2" value="原始音訊&lt;div&gt;(以間隔切割，即1.5秒沒有收到音訊即切割)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="imE-p2sqSigTD8bL96RM-2" value="原始音訊&lt;div&gt;(以間隔切割，即1.5秒沒有收到音訊即切割)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="80" y="355" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="imE-p2sqSigTD8bL96RM-4" target="imE-p2sqSigTD8bL96RM-5">
+        <mxCell id="imE-p2sqSigTD8bL96RM-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="imE-p2sqSigTD8bL96RM-4" target="imE-p2sqSigTD8bL96RM-5" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-4" value="分離模型" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="imE-p2sqSigTD8bL96RM-4" value="分離模型" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="310" y="350" width="110" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-5" value="分離後音檔" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="imE-p2sqSigTD8bL96RM-5" value="分離後音檔" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="540" y="355" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-6" value="在輸出的同時&lt;div&gt;進行分離運算&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="210" y="395" width="100" height="40" as="geometry" />
+        <mxCell id="imE-p2sqSigTD8bL96RM-6" value="在輸出的同時&lt;div&gt;進行分離運算&lt;/div&gt;&lt;div&gt;(多執行緒)&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="210" y="390" width="100" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="imE-p2sqSigTD8bL96RM-7" value="將分離後的音檔&lt;div&gt;存儲在另一個區域&lt;/div&gt;&lt;div&gt;以便後續的語音辨識&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="405" y="385" width="130" height="60" as="geometry" />
+        <mxCell id="imE-p2sqSigTD8bL96RM-7" value="將分離後的音檔&lt;div&gt;存儲在另一個區域&lt;/div&gt;&lt;div&gt;以便後續的語音辨識&lt;/div&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="405" y="390" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nur4ARf7xe8F05sgQiX5-1" value="&lt;b&gt;動態切割&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="45" y="300" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="nur4ARf7xe8F05sgQiX5-2" value="&lt;b&gt;5秒切割(舊版)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="30" y="100" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="nur4ARf7xe8F05sgQiX5-4" value="五秒沒有收到音訊會直接中止程式" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="160" y="308" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="nur4ARf7xe8F05sgQiX5-5" value="" style="endArrow=none;html=1;rounded=0;entryX=0.327;entryY=0.945;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="nur4ARf7xe8F05sgQiX5-4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="190" y="350" as="sourcePoint" />
+            <mxPoint x="470" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nur4ARf7xe8F05sgQiX5-6" value="&lt;b&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;兩語者（錄音 -&amp;gt; 分離 -&amp;gt; 輸出獨立音檔 -&amp;gt; 後續處理..）&lt;/font&gt;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="10" y="30" width="460" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
