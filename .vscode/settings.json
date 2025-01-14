@@ -1,14 +1,20 @@
 {
     "cSpell.words": [
+        "denoised",
+        "filtfilt",
         "frombuffer",
+        "hann",
         "hparams",
+        "istft",
         "keepdim",
         "levelname",
+        "noisereduce",
         "pyaudio",
         "randn",
         "resampler",
         "savedir",
         "seperator",
-        "Sepformer"
+        "Sepformer",
+        "stft"
     ]
 }

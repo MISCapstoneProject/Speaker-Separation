@@ -7,20 +7,21 @@ from speechbrain.inference import SepformerSeparation as separator
 import torch
 import torchaudio
 import logging
-from scipy import signal
+import noisereduce as nr
 
 # 基本錄音參數
 CHUNK = 1024
 FORMAT = pyaudio.paFloat32
 CHANNELS = 2
-RATE = 48000
-TARGET_RATE = 8000  # 降低採樣率以改善分離效果
-WINDOW_SIZE = 5  # 縮短窗口大小以提高分離效果
-OVERLAP = 0.5  # 減少重疊以避免邊界效應
+RATE = 44100
+TARGET_RATE = 8000
+WINDOW_SIZE = 5
+OVERLAP = 0.5
 DEVICE_INDEX = None
 
 # 音訊處理參數
-MIN_ENERGY_THRESHOLD = 0.01  # 最小能量閾值，用於靜音檢測
+MIN_ENERGY_THRESHOLD = 0.005  # 能量閾值
+NOISE_REDUCE_STRENGTH = 0.15  # 降噪強度
 
 # 設定日誌
 logging.basicConfig(
@@ -31,42 +32,52 @@ logger = logging.getLogger(__name__)
 
 class AudioSeparator:
     def __init__(self):
-        # 初始化模型
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"使用設備: {self.device}")
         
-        # 使用較小的頻寬配置載入模型
         self.model = separator.from_hparams(
             source="speechbrain/sepformer-wsj02mix",
             savedir="pretrained_models/sepformer-wsj02mix",
-            run_opts={
-                "device": self.device,
-            }
+            run_opts={"device": self.device}
         )
         
-        # 初始化重採樣器
         self.resampler = torchaudio.transforms.Resample(
             orig_freq=RATE,
             new_freq=TARGET_RATE
         ).to(self.device)
         
-        # 初始化執行緒池
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.futures = []
         self.is_recording = False
         logger.info("AudioSeparator 初始化完成")
 
-    def enhance_waveform(self, waveform):
-        """增強波形品質"""
-        # 對信號進行標準化
-        mean = torch.mean(waveform)
-        std = torch.std(waveform)
-        waveform = (waveform - mean) / (std + 1e-8)
+    def spectral_gating(self, audio):
+        """應用頻譜閘控降噪"""
+        # 使用音訊開始部分作為噪音樣本
+        noise_sample = audio[:int(TARGET_RATE * 0.1)]  # 使用前0.1秒作為噪音樣本
+        return nr.reduce_noise(
+            y=audio,
+            y_noise=noise_sample,
+            sr=TARGET_RATE,
+            prop_decrease=NOISE_REDUCE_STRENGTH,
+            n_jobs=-1
+        )
+
+    def enhance_separation(self, separated_signals):
+        """增強分離效果"""
+        enhanced_signals = torch.zeros_like(separated_signals)
         
-        # 應用 pre-emphasis
-        waveform = torch.cat([waveform[:, 0:1], waveform[:, 1:] - 0.97 * waveform[:, :-1]], dim=1)
+        for i in range(separated_signals.shape[2]):
+            # 取得當前說話者的信號
+            current_signal = separated_signals[0, :, i].cpu().numpy()
+            
+            # 應用頻譜閘控降噪
+            denoised_signal = self.spectral_gating(current_signal)
+            
+            # 轉換回tensor並存儲
+            enhanced_signals[0, :len(denoised_signal), i] = torch.from_numpy(denoised_signal).to(self.device)
         
-        return waveform
+        return enhanced_signals
 
     def process_audio(self, audio_data):
         """處理音訊資料"""
@@ -76,20 +87,22 @@ class AudioSeparator:
                 audio_float = audio_data.astype(np.float32) / 32768.0
             else:
                 audio_float = audio_data.astype(np.float32)
-                
-            # 檢查音訊能量
+            
+            # 改進能量檢測邏輯
             energy = np.mean(np.abs(audio_float))
             if energy < MIN_ENERGY_THRESHOLD:
+                logger.debug(f"音訊能量 ({energy}) 低於閾值 ({MIN_ENERGY_THRESHOLD})")
                 return None
             
             # 重塑為正確的形狀
             if len(audio_float.shape) == 1:
                 audio_float = audio_float.reshape(-1, CHANNELS)
             
-            # 轉換為PyTorch tensor
-            audio_tensor = torch.from_numpy(audio_float).T.float()
+            # 應用頻譜閘控降噪進行預處理
+            denoised_audio = np.stack([self.spectral_gating(audio_float[:, ch]) for ch in range(CHANNELS)], axis=1)
             
-            # 轉換為單聲道
+            # 轉換為PyTorch tensor並確保形狀正確
+            audio_tensor = torch.from_numpy(denoised_audio).T.float()
             if audio_tensor.shape[0] == 2:
                 audio_tensor = torch.mean(audio_tensor, dim=0, keepdim=True)
             
@@ -97,94 +110,15 @@ class AudioSeparator:
             audio_tensor = audio_tensor.to(self.device)
             resampled = self.resampler(audio_tensor)
             
-            # 增強波形
-            enhanced = self.enhance_waveform(resampled)
-            
             # 確保形狀正確
-            if len(enhanced.shape) == 1:
-                enhanced = enhanced.unsqueeze(0)
+            if len(resampled.shape) == 1:
+                resampled = resampled.unsqueeze(0)
             
-            return enhanced
+            return resampled
             
         except Exception as e:
             logger.error(f"音訊處理錯誤：{e}")
-            raise
-
-    def improve_separation(self, separated_signals):
-        """改進分離效果"""
-        # 標準化每個分離的信號
-        for i in range(separated_signals.shape[2]):
-            signal = separated_signals[:, :, i]
-            mean = torch.mean(signal)
-            std = torch.std(signal)
-            separated_signals[:, :, i] = (signal - mean) / (std + 1e-8)
-        
-        # 應用 Wiener 濾波進行增強
-        for i in range(separated_signals.shape[2]):
-            signal = separated_signals[:, :, i]
-            # 計算信號功率譜
-            spec = torch.stft(signal.squeeze(0), 
-                            n_fft=512, 
-                            hop_length=256, 
-                            window=torch.hann_window(512).to(self.device),
-                            return_complex=True)
-            mag = torch.abs(spec)
-            phase = torch.angle(spec)
-            
-            # 應用 Wiener 濾波
-            power = mag ** 2
-            mask = power / (power + 0.01)
-            enhanced_mag = mag * mask
-            
-            # 重建信號
-            enhanced_spec = enhanced_mag * torch.exp(1j * phase)
-            enhanced_signal = torch.istft(enhanced_spec, 
-                                        n_fft=512, 
-                                        hop_length=256, 
-                                        window=torch.hann_window(512).to(self.device))
-            separated_signals[:, :enhanced_signal.shape[0], i] = enhanced_signal.unsqueeze(0)
-        
-        return separated_signals
-
-    def separate_and_save(self, audio_tensor, output_dir, segment_index):
-        """分離並儲存音訊"""
-        try:
-            logger.info(f"處理片段 {segment_index}")
-            
-            if audio_tensor is None:
-                logger.info(f"片段 {segment_index} 能量太低，跳過處理")
-                return
-            
-            # 分離音訊
-            with torch.no_grad():
-                separated = self.model.separate_batch(audio_tensor)
-                # 改進分離效果
-                separated = self.improve_separation(separated)
-            
-            # 儲存結果
-            timestamp = datetime.now().strftime('%Y%m%d-%H_%M_%S')
-            for i in range(separated.shape[2]):
-                output_file = os.path.join(
-                    output_dir,
-                    f"speaker{i+1}_{timestamp}_{segment_index}.wav"
-                )
-                
-                # 正規化音量
-                audio_data = separated[:, :, i].cpu()
-                max_val = torch.max(torch.abs(audio_data))
-                if max_val > 0:
-                    audio_data = audio_data / max_val * 0.9
-                
-                torchaudio.save(
-                    output_file,
-                    audio_data,
-                    TARGET_RATE
-                )
-                
-            logger.info(f"片段 {segment_index} 處理完成")
-            
-        except Exception as e:
-            logger.error(f"處理片段 {segment_index} 時發生錯誤：{e}")
+            return None
 
     def record_and_process(self, output_dir):
         """錄音並處理"""
@@ -201,68 +135,55 @@ class AudioSeparator:
             
             logger.info("開始錄音")
             
-            # 計算每個窗口需要的幀數
+            # 計算緩衝區大小
             samples_per_window = int(WINDOW_SIZE * RATE)
             window_frames = int(samples_per_window / CHUNK)
             overlap_frames = int((OVERLAP * RATE) / CHUNK)
             slide_frames = window_frames - overlap_frames
             
             buffer = []
-            segment_index = 1
+            segment_index = 0  # 從0開始計數
             self.is_recording = True
             
             while self.is_recording:
                 # 讀取音訊資料
-                for _ in range(slide_frames):
-                    if not self.is_recording:
-                        break
-                    try:
-                        data = stream.read(CHUNK, exception_on_overflow=False)
-                        if FORMAT == pyaudio.paFloat32:
-                            frame = np.frombuffer(data, dtype=np.float32)
-                        else:
-                            frame = np.frombuffer(data, dtype=np.int16)
-                        buffer.append(frame)
-                    except IOError as e:
-                        logger.warning(f"錄音時發生IO錯誤：{e}")
-                        continue
+                try:
+                    data = stream.read(CHUNK, exception_on_overflow=False)
+                    frame = np.frombuffer(data, dtype=np.float32 if FORMAT == pyaudio.paFloat32 else np.int16)
+                    buffer.append(frame)
+                except IOError as e:
+                    logger.warning(f"錄音時發生IO錯誤：{e}")
+                    continue
                 
-                # 當緩衝區足夠大時處理音訊
+                # 當緩衝區達到指定大小時處理音訊
                 if len(buffer) >= window_frames:
-                    try:
-                        # 取出一個完整窗口的資料
-                        audio_data = np.concatenate(buffer[:window_frames])
-                        audio_tensor = self.process_audio(audio_data)
-                        
-                        if audio_tensor is not None:
-                            # 提交分離任務
-                            future = self.executor.submit(
-                                self.separate_and_save,
-                                audio_tensor,
-                                output_dir,
-                                segment_index
-                            )
-                            self.futures.append(future)
-                        
-                        # 清理已完成的任務和緩衝區
-                        self.futures = [f for f in self.futures if not f.done()]
-                        buffer = buffer[slide_frames:]
-                        segment_index += 1
-                        
-                    except Exception as e:
-                        logger.error(f"音訊處理錯誤：{e}")
-                        buffer = buffer[slide_frames:]
-                        continue
+                    segment_index += 1
+                    audio_data = np.concatenate(buffer[:window_frames])
+                    audio_tensor = self.process_audio(audio_data)
+                    
+                    if audio_tensor is not None:
+                        logger.info(f"處理片段 {segment_index}")
+                        future = self.executor.submit(
+                            self.separate_and_save,
+                            audio_tensor,
+                            output_dir,
+                            segment_index
+                        )
+                        self.futures.append(future)
+                    
+                    # 移動緩衝區
+                    buffer = buffer[slide_frames:]
+                    
+                    # 清理已完成的任務
+                    self.futures = [f for f in self.futures if not f.done()]
                     
         except Exception as e:
             logger.error(f"錄音過程中發生錯誤：{e}")
         finally:
-            # 清理資源
             stream.stop_stream()
             stream.close()
             p.terminate()
             
-            # 等待所有處理任務完成
             for future in self.futures:
                 try:
                     future.result(timeout=10.0)
@@ -271,6 +192,53 @@ class AudioSeparator:
             
             self.executor.shutdown(wait=True)
             logger.info("錄音結束，資源已清理")
+
+    def separate_and_save(self, audio_tensor, output_dir, segment_index):
+        """分離並儲存音訊"""
+        try:
+            # 分離音訊
+            with torch.no_grad():
+                # 執行初始分離
+                separated = self.model.separate_batch(audio_tensor)
+                
+                # 增強分離效果
+                enhanced_separated = self.enhance_separation(separated)
+                
+                # 儲存結果
+                timestamp = datetime.now().strftime('%Y%m%d-%H_%M_%S')
+                for i in range(enhanced_separated.shape[2]):
+                    # 提取當前說話者的音訊
+                    speaker_audio = enhanced_separated[:, :, i].cpu()
+                    
+                    # 正規化音量
+                    max_val = torch.max(torch.abs(speaker_audio))
+                    if max_val > 0:
+                        speaker_audio = speaker_audio / max_val * 0.9
+                    
+                    # 轉換為numpy進行最終處理
+                    audio_np = speaker_audio.numpy()
+                    
+                    # 再次應用降噪
+                    final_audio = self.spectral_gating(audio_np[0])
+                    
+                    # 轉回tensor並保存
+                    final_tensor = torch.from_numpy(final_audio).unsqueeze(0)
+                    
+                    output_file = os.path.join(
+                        output_dir,
+                        f"speaker{i+1}_{timestamp}_{segment_index}.wav"
+                    )
+                    
+                    torchaudio.save(
+                        output_file,
+                        final_tensor,
+                        TARGET_RATE
+                    )
+                
+            logger.info(f"片段 {segment_index} 處理完成")
+            
+        except Exception as e:
+            logger.error(f"處理片段 {segment_index} 時發生錯誤：{e}")
 
     def stop_recording(self):
         """停止錄音"""
