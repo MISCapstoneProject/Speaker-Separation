@@ -9,14 +9,30 @@ import torchaudio
 import logging
 import noisereduce as nr
 
+"""
+record_separate_sync_sw.py
+執行程式，輸入 python Record\record_separate_sync_sw.py
+
+程式工作流程：
+
+1. 持續錄音並將音訊存入緩衝區
+2. 當緩衝區累積足夠的資料時(5秒):
+    ‧進行初步的降噪處理
+    ‧使用語音分離模型將不同說話者的聲音分開
+    ‧對分離後的每個音訊再次進行降噪
+    ‧儲存處理後的音訊檔案
+3. 使用多執行緒處理音訊，確保錄音不會被中斷
+
+"""
+
 # 基本錄音參數
-CHUNK = 1024
-FORMAT = pyaudio.paFloat32
-CHANNELS = 2
-RATE = 44100
-TARGET_RATE = 8000
-WINDOW_SIZE = 5
-OVERLAP = 0.5
+CHUNK = 1024    # 每次讀取的音訊區塊大小
+FORMAT = pyaudio.paFloat32   # 音訊格式為32位元浮點數
+CHANNELS = 2        # 雙聲道
+RATE = 44100        # 原始採樣率
+TARGET_RATE = 8000  # 降採樣後的採樣率
+WINDOW_SIZE = 5     # 處理窗口大小(秒)
+OVERLAP = 0.5       # 窗口重疊比例(秒)
 DEVICE_INDEX = None
 
 # 音訊處理參數
@@ -32,22 +48,25 @@ logger = logging.getLogger(__name__)
 
 class AudioSeparator:
     def __init__(self):
+        # 檢查是否可以使用GPU
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"使用設備: {self.device}")
         
+        # 載入語音分離模型 
         self.model = separator.from_hparams(
             source="speechbrain/sepformer-wsj02mix",
             savedir="pretrained_models/sepformer-wsj02mix",
             run_opts={"device": self.device}
         )
         
+        # 初始化重採樣器，將採樣率從44100Hz降到8000Hz
         self.resampler = torchaudio.transforms.Resample(
             orig_freq=RATE,
             new_freq=TARGET_RATE
         ).to(self.device)
         
         self.executor = ThreadPoolExecutor(max_workers=2)
-        self.futures = []
+        self.futures = []   # 用於追蹤提交的任務
         self.is_recording = False
         logger.info("AudioSeparator 初始化完成")
 
@@ -88,7 +107,7 @@ class AudioSeparator:
             else:
                 audio_float = audio_data.astype(np.float32)
             
-            # 改進能量檢測邏輯
+            # 能量檢測
             energy = np.mean(np.abs(audio_float))
             if energy < MIN_ENERGY_THRESHOLD:
                 logger.debug(f"音訊能量 ({energy}) 低於閾值 ({MIN_ENERGY_THRESHOLD})")
@@ -106,7 +125,7 @@ class AudioSeparator:
             if audio_tensor.shape[0] == 2:
                 audio_tensor = torch.mean(audio_tensor, dim=0, keepdim=True)
             
-            # 移至GPU並重新取樣
+            # 移至GPU並重新取樣（如果沒有GPU就使用CPU）
             audio_tensor = audio_tensor.to(self.device)
             resampled = self.resampler(audio_tensor)
             
@@ -133,7 +152,7 @@ class AudioSeparator:
                 input_device_index=DEVICE_INDEX
             )
             
-            logger.info("開始錄音")
+            logger.info("開始錄音, CTRL+C 停止錄音")
             
             # 計算緩衝區大小
             samples_per_window = int(WINDOW_SIZE * RATE)
@@ -174,7 +193,7 @@ class AudioSeparator:
                     # 移動緩衝區
                     buffer = buffer[slide_frames:]
                     
-                    # 清理已完成的任務
+                    # 清理已完成的任務，保留未完成的工作
                     self.futures = [f for f in self.futures if not f.done()]
                     
         except Exception as e:
@@ -184,9 +203,10 @@ class AudioSeparator:
             stream.close()
             p.terminate()
             
+            # 在結束時等待所有任務完成
             for future in self.futures:
                 try:
-                    future.result(timeout=10.0)
+                    future.result(timeout=10.0)  # 設定超時以避免永久等待
                 except Exception as e:
                     logger.error(f"處理任務發生錯誤：{e}")
             

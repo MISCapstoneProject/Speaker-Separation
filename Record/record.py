@@ -13,7 +13,7 @@ CHUNK = 1024                    # 每次從輸入串流讀取的 frame 數量
 FORMAT = pyaudio.paInt16        # 音訊格式
 CHANNELS = 2                    # 立體聲 (2 聲道)
 RATE = 44100                    # 取樣頻率
-RECORD_SECONDS = 5              # 每段錄音秒數
+RECORD_SECONDS = 30              # 每段錄音秒數
 DEVICE_INDEX = None             # 若有多個音訊裝置，可指定裝置編號，None 表示使用預設裝置
 
 def record_segment(audio_stream):
