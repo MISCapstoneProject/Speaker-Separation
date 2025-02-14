@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "denoised",
+        "ecapa",
         "filtfilt",
         "frombuffer",
         "hann",
@@ -15,6 +16,8 @@
         "savedir",
         "seperator",
         "Sepformer",
-        "stft"
+        "spkrec",
+        "stft",
+        "voxceleb"
     ]
 }
