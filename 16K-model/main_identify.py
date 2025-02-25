@@ -311,6 +311,6 @@ if __name__ == "__main__":
     # process_audio_file(test_audio_file)
     # print()
 
-    test_directory = "test_audioFile/0915"  # 測試資料夾路徑
+    test_directory = "test_audioFile"  # 測試資料夾路徑
     process_audio_directory(test_directory)  # 處理資料夾內的所有音檔
     print()

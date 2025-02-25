@@ -1,0 +1,3 @@
+SpeechBrain 模型加載成功！
+Directory test_audioFile/0915 does not exist. Cancel.
+
