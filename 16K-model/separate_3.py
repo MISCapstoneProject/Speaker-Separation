@@ -45,7 +45,7 @@ class AudioSeparator:
         
         self.resampler = torchaudio.transforms.Resample(
             orig_freq=RATE,
-            new_freq=TARGET_RATE
+            new_freq=8000
         ).to(self.device)
         
         self.executor = ThreadPoolExecutor(max_workers=2)
