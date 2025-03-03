@@ -9,10 +9,10 @@ def audio_to_text_whisper(audio_file, model_size="small"):
     model = whisper.load_model(model_size, device="cpu")
     
     # language可以指定"zh"、"en"或讓它自動偵測
-    result = model.transcribe(audio_file, fp16=False, language="en")
+    result = model.transcribe(audio_file, fp16=False, language="zh")
     return result["text"]
 
 if __name__ == "__main__":
-    input_audio = "Audios/speaker1_20250211-18_12_39_1.wav"
+    input_audio = "16K-model\Audios-16K\\final_speaker2_20250303-17_23_00.wav"
     recognized_text = audio_to_text_whisper(input_audio, model_size="small")
     print("Whisper辨識結果：", recognized_text)

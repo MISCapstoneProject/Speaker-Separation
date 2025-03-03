@@ -9,7 +9,9 @@
         "istft",
         "keepdim",
         "levelname",
+        "libri",
         "noisereduce",
+        "pretrained",
         "pyaudio",
         "randn",
         "resampler",
@@ -18,6 +20,7 @@
         "Sepformer",
         "spkrec",
         "stft",
+        "venv",
         "voxceleb"
     ]
 }
