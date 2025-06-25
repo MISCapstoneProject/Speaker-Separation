@@ -21,6 +21,7 @@
         "spkrec",
         "stft",
         "venv",
-        "voxceleb"
+        "voxceleb",
+        "whamr"
     ]
 }

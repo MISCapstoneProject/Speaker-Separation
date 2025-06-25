@@ -4,3 +4,7 @@ models
 
 # venv
 recordTest
+
+# Audios
+16K-model/Audios_Storage
+16K-model/Audios-16K
